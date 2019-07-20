@@ -1,0 +1,310 @@
+### Handling responses in the HTTP Client
+### https://blog.jetbrains.com/phpstorm/2018/04/handling-reponses-in-the-http-client
+
+### API
+
+GET {{graphql_endpoint}}?query={version}
+
+###
+
+GET {{graphql_endpoint}}?query={reset}
+
+### CHALLENGE
+
+GET {{graphql_endpoint}}?query={challenges {edges {node {id title privacyMode privacyData createdDate createdBy {id name email} modifiedBy {id} closeDate topIdea(reactionValue: "LIKE") {id title description}}}}}
+
+###
+
+GET {{graphql_endpoint}}?query={challenges(createdByMe: true, excludeClosed: true, excludeEnded: true) {edges {node {id title closeDate privacyMode privacyData createdDate reactionsSummary(value: "LIKE") {value totalCount}}}}}
+x-token: {{token}}
+
+###
+
+GET {{graphql_endpoint}}?query={challenges(createdById: "11111111-1111-1111-1111-111111111111") {edges {node {id title closeDate privacyMode privacyData createdDate createdBy {id name email}}}}}
+x-token: {{token}}
+
+###
+
+GET {{graphql_endpoint}}?query={challenges {edges {node {id title ideas {edges {node {id title createdDate createdBy {id name email} modifiedBy {id}}}} closeDate}}}}
+
+###
+
+GET {{graphql_endpoint}}?query={challenge(id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") {id title reactionsSummary {value totalCount}}}
+x-token: {{token}}
+
+### IDEA
+
+GET {{graphql_endpoint}}?query={ideas {edges {node {id title myReaction {id value} createdBy {id name email} challenge {id title}}}}}
+
+###
+
+GET {{graphql_endpoint}}?query={ideas(createdById: "11111111-1111-1111-1111-111111111111") {edges {node {id title challenge {id title}}}}}
+x-token: {{token}}
+
+###
+
+GET {{graphql_endpoint}}?query={idea(id: "280a29b3-83c4-40bb-8a22-a5ed6b05458e") {id title reactions {edges {node {id value}}}}}
+x-token: {{token}}
+
+###
+
+GET {{graphql_endpoint}}?query={idea(id: "280a29b3-83c4-40bb-8a22-a5ed6b05458e") {id title myReaction {value}}}
+x-token: {{token}}
+
+### USER
+
+GET {{graphql_endpoint}}?query={me {id name email status imageUrl challenges {edges {node {id title reactionsSummary {value totalCount}}}}}}
+x-token: {{token}}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("userId", response.body.data.me.id);
+%}
+
+### REACTION
+
+GET {{graphql_endpoint}}?query={reactions(objectType: IDEA, value: "LIKE", createdById: "11111111-1111-1111-1111-111111111111") {totalCount edges {node {id objectId value}}}}
+x-token: {{token}}
+
+### AUTHENTICATION
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {checkEmail(email: \"user@dummy.com\") {isAvailable isBlacklisted}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {resendEmailConfirmation(email: \"user@dummy.com\") {_}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {signUp(name: \"John Doe\", email: \"user@dummy.com\", password: \"user\") {_}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {confirmEmail(token: \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiZjUwYWU2ZDAtOGU1NC00NzBjLWE3OTQtY2FiYTExZGZkNjkyIiwiZW1haWwiOiJkZ29tZXpAb3JhbmdlbG9vcHMuY29tIiwiY29kZSI6IkNsQnBia1pBVkNVbzRfMnMyWHFRRmYifSwiaWF0IjoxNTUyNDI0OTgxLCJleHAiOjE1NTI1MTEzODF9.1VT3XjyoYsvaHCa1Wwr7PTHrQ64UtbsAdXDlvzt5i_4\") {_}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {signIn(email: \"user@dummy.com\", password: \"user\", generateRefreshToken: true) {token refreshToken}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("token", response.body.data.signIn.token);
+  client.global.set("refreshToken", response.body.data.signIn.refreshToken);
+%}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {refreshTokens(token: \"{{refreshToken}}\") {token refreshToken}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("token", response.body.data.refreshTokens.token);
+  client.global.set("refreshToken", response.body.data.refreshTokens.refreshToken);
+%}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {requestResetPassword(email: \"user@dummy.com\") {_}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+
+{
+  "query": "mutation {resetPassword(token: \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRnb21lekBvcmFuZ2Vsb29wcy5jb20iLCJjb2RlIjoiQkM1R2dZTHR4SG9iQXJiX2VLMkRTXyIsImlhdCI6MTU0Nzc1MDUwNywiZXhwIjoxNTQ3ODM2OTA3fQ.UyrjtCwhtmAstOrDGrd1OnYSyjHeCQ2oq2cWUAMSNzI\" password: \"Password02\") {_}}"
+}
+
+### USER
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {updateUser(id: \"f9d4ac73-9756-4e20-8c70-fead0c588814\" name: \"Test\") {id name}}"
+}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {deleteUser(id: \"d087c5d5-1e8e-4eb0-8ea8-372655851d1f\")}"
+}
+
+### CHALLENGE
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {createChallenge(title: \"hello world\" description: \"hello world description\" closeDate: \"2020-01-01T14:00:00.000Z\" endDate: \"2021-10-25T13:40:36+05:00\") {id title privacyMode}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("challengeId", response.body.data.createChallenge.id);
+%}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {updateChallenge(id: \"{{challengeId}}\" title: \"hello world (updated)\" description: \"hello world description (updated)\" privacyMode: BYDOMAIN) {id title privacyMode privacyData}}"
+}
+
+###
+
+GET {{graphql_endpoint}}?query={challenge(id: "{{challengeId}}") {id title reactionsSummary {value totalCount}}}
+x-token: {{token}}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {deleteChallenge(id: \"{{challengeId}}\")}"
+}
+
+### REACTION
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {createReaction(objectType: CHALLENGE objectId: \"{{challengeId}}\" value: \"LIKE\") {id objectId value}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("reactionId", response.body.data.createReaction.id);
+%}
+
+###
+
+GET {{graphql_endpoint}}?query={reaction(objectType: CHALLENGE id: "e250d032-ae02-4185-9e2c-477572557d37") {id objectId value}}
+x-token: {{token}}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {deleteReaction(objectType: CHALLENGE id: \"{{reactionId}}\")}"
+}
+
+### IDEA
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {createIdea(challengeId: \"{{challengeId}}\" title: \"Idea A.2 (dummy)\" description: \"Idea A.1 description\") {id title}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("ideaId", response.body.data.createIdea.id);
+%}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {updateIdea(id: \"{{ideaId}}\" title: \"updated Idea A.2 (dummy)\") {id title}}"
+}
+
+###
+
+GET {{graphql_endpoint}}?query={idea(id: "2d5a9af3-166f-4ffb-840a-cd506a6179bf") {id title myReaction {value}}}
+x-token: {{token}}
+
+###
+
+GET {{graphql_endpoint}}?query={idea(id: "333a9af3-166f-4ffb-840a-cd506a6179bf") {id title myReaction {value}}}
+x-token: {{token}}
+
+###
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {deleteIdea(id: \"{{ideaId}}\")}"
+}
+
+### REACTION
+
+POST {{graphql_endpoint}}
+Content-Type: application/json
+x-token: {{token}}
+
+{
+  "query": "mutation {createReaction(objectType: IDEA objectId: \"{{ideaId}}\" value: \"LIKE\") {id objectId value}}"
+}
+
+> {%
+  client.assert(response.status === 200, "Status: " + response.status);
+
+  client.global.set("reactionId", response.body.data.createReaction.id);
+%}
+
+###
